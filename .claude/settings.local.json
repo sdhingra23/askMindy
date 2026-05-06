@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(/usr/local/bin/npm install *)"
+      "Bash(/usr/local/bin/npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
