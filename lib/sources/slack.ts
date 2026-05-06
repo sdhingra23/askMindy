@@ -12,7 +12,14 @@ export async function searchSlack(
   const token = process.env.SLACK_USER_TOKEN
   if (!token) throw new Error('SLACK_USER_TOKEN not set')
 
-  const params = new URLSearchParams({ query, count: '5', sort: 'score' })
+  // Restrict search to whitelisted channels if configured
+  const whitelist = process.env.SLACK_CHANNEL_WHITELIST
+  const channelFilter = whitelist
+    ? whitelist.split(',').map((c) => `in:#${c.trim()}`).join(' ')
+    : ''
+  const scopedQuery = channelFilter ? `${query} ${channelFilter}` : query
+
+  const params = new URLSearchParams({ query: scopedQuery, count: '5', sort: 'score' })
 
   const response = await fetch(`https://slack.com/api/search.messages?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
