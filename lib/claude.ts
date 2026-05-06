@@ -88,6 +88,8 @@ Rules:
   SOURCES_JSON:[{"source":"notion|slack|zoom|zendesk","title":"...","url":"...","age":"..."}]
 - Include 2-3 sources maximum. Output nothing after the JSON.`
 
+  console.log(`[claude] context sent (${context.length} chars):\n${context}`)
+
   const userContent = context
     ? `Context from knowledge base:\n\n${context}\n\nQuestion: ${question}`
     : `Question: ${question}\n\nNote: No results were retrieved from the knowledge base.`
