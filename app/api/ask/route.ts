@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
     return new Response('Question is required', { status: 400 })
   }
 
+  if (sources.length === 0) {
+    return new Response('No sources selected', { status: 400 })
+  }
+
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -36,21 +40,15 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const jobs: Promise<SourceResult>[] = []
-
-        if (jobs.length === 0) {
-          send('error', { message: 'No sources selected' })
-          controller.close()
-          return
-        }
-
         const activeLabels = sources
           .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
           .join(', ')
         send('status', { message: `Searching ${activeLabels}...` })
 
-        // Extract keywords for source searches, keep full question for Claude
+        // Extract keywords for source searches — full question is kept for Claude
         const searchQuery = await extractSearchQuery(question).catch(() => question)
+
+        const jobs: Promise<SourceResult>[] = []
 
         if (sources.includes('notion')) {
           jobs.push(
