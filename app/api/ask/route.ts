@@ -3,6 +3,7 @@ import { searchNotion } from '@/lib/sources/notion'
 import { searchSlack } from '@/lib/sources/slack'
 import { searchZoomChat } from '@/lib/sources/zoom'
 import { searchZendesk } from '@/lib/sources/zendesk'
+import { searchNotionPriorityDB } from '@/lib/sources/notionPriorityDB'
 import { streamClaudeAnswer, type SourceResult } from '@/lib/claude'
 import { extractSearchQuery } from '@/lib/extractQuery'
 
@@ -48,42 +49,42 @@ export async function POST(req: NextRequest) {
         // Extract keywords for source searches — full question is kept for Claude
         const searchQuery = await extractSearchQuery(question).catch(() => question)
 
-        const jobs: Promise<SourceResult>[] = []
+        // Run priority DB and all other sources in parallel
+        const [priorityResult, ...otherResults] = await Promise.all([
+          searchNotionPriorityDB(searchQuery).catch((err) => {
+            console.error('[notion-priority] search failed:', err)
+            return { source: 'notion' as const, results: [] }
+          }),
+          ...(sources.includes('notion')
+            ? [searchNotion(searchQuery).catch((err) => {
+                console.error('[notion] search failed:', err)
+                return { source: 'notion' as const, results: [] }
+              })]
+            : []),
+          ...(sources.includes('slack')
+            ? [searchSlack(searchQuery).catch((err) => {
+                console.error('[slack] search failed:', err)
+                return { source: 'slack' as const, results: [] }
+              })]
+            : []),
+          ...(sources.includes('zoom')
+            ? [searchZoomChat(searchQuery).catch((err) => {
+                console.error('[zoom] search failed:', err)
+                return { source: 'zoom' as const, results: [] }
+              })]
+            : []),
+          ...(sources.includes('zendesk')
+            ? [searchZendesk(searchQuery).catch((err) => {
+                console.error('[zendesk] search failed:', err)
+                return { source: 'zendesk' as const, results: [] }
+              })]
+            : []),
+        ])
 
-        if (sources.includes('notion')) {
-          jobs.push(
-            searchNotion(searchQuery).catch((err) => {
-              console.error('[notion] search failed:', err)
-              return { source: 'notion' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('slack')) {
-          jobs.push(
-            searchSlack(searchQuery).catch((err) => {
-              console.error('[slack] search failed:', err)
-              return { source: 'slack' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('zoom')) {
-          jobs.push(
-            searchZoomChat(searchQuery).catch((err) => {
-              console.error('[zoom] search failed:', err)
-              return { source: 'zoom' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('zendesk')) {
-          jobs.push(
-            searchZendesk(searchQuery).catch((err) => {
-              console.error('[zendesk] search failed:', err)
-              return { source: 'zendesk' as const, results: [] }
-            }),
-          )
-        }
+        // Priority DB wins if it has results — fall back to all others if not
+        const sourceResults: SourceResult[] =
+          priorityResult.results.length > 0 ? [priorityResult] : otherResults
 
-        const sourceResults = await Promise.all(jobs)
         const hasResults = sourceResults.some((r) => r.results.length > 0)
 
         send('status', {
