@@ -4,6 +4,7 @@ import { searchSlack } from '@/lib/sources/slack'
 import { searchZoomChat } from '@/lib/sources/zoom'
 import { searchZendesk } from '@/lib/sources/zendesk'
 import { streamClaudeAnswer, type SourceResult } from '@/lib/claude'
+import { extractSearchQuery } from '@/lib/extractQuery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,39 +38,6 @@ export async function POST(req: NextRequest) {
       try {
         const jobs: Promise<SourceResult>[] = []
 
-        if (sources.includes('notion')) {
-          jobs.push(
-            searchNotion(question).catch((err) => {
-              console.error('[notion] search failed:', err)
-              return { source: 'notion' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('slack')) {
-          jobs.push(
-            searchSlack(question).catch((err) => {
-              console.error('[slack] search failed:', err)
-              return { source: 'slack' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('zoom')) {
-          jobs.push(
-            searchZoomChat(question).catch((err) => {
-              console.error('[zoom] search failed:', err)
-              return { source: 'zoom' as const, results: [] }
-            }),
-          )
-        }
-        if (sources.includes('zendesk')) {
-          jobs.push(
-            searchZendesk(question).catch((err) => {
-              console.error('[zendesk] search failed:', err)
-              return { source: 'zendesk' as const, results: [] }
-            }),
-          )
-        }
-
         if (jobs.length === 0) {
           send('error', { message: 'No sources selected' })
           controller.close()
@@ -80,6 +48,42 @@ export async function POST(req: NextRequest) {
           .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
           .join(', ')
         send('status', { message: `Searching ${activeLabels}...` })
+
+        // Extract keywords for source searches, keep full question for Claude
+        const searchQuery = await extractSearchQuery(question).catch(() => question)
+
+        if (sources.includes('notion')) {
+          jobs.push(
+            searchNotion(searchQuery).catch((err) => {
+              console.error('[notion] search failed:', err)
+              return { source: 'notion' as const, results: [] }
+            }),
+          )
+        }
+        if (sources.includes('slack')) {
+          jobs.push(
+            searchSlack(searchQuery).catch((err) => {
+              console.error('[slack] search failed:', err)
+              return { source: 'slack' as const, results: [] }
+            }),
+          )
+        }
+        if (sources.includes('zoom')) {
+          jobs.push(
+            searchZoomChat(searchQuery).catch((err) => {
+              console.error('[zoom] search failed:', err)
+              return { source: 'zoom' as const, results: [] }
+            }),
+          )
+        }
+        if (sources.includes('zendesk')) {
+          jobs.push(
+            searchZendesk(searchQuery).catch((err) => {
+              console.error('[zendesk] search failed:', err)
+              return { source: 'zendesk' as const, results: [] }
+            }),
+          )
+        }
 
         const sourceResults = await Promise.all(jobs)
         const hasResults = sourceResults.some((r) => r.results.length > 0)
