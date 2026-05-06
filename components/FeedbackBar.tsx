@@ -8,8 +8,26 @@ const OPTIONS = [
   { id: 'wrong', label: 'Wrong answer' },
 ]
 
-export default function FeedbackBar() {
+interface Props {
+  question: string
+  answer: string
+}
+
+export default function FeedbackBar({ question, answer }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
+
+  const handleSelect = async (id: string) => {
+    setSelected(id)
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: id, question, answer }),
+      })
+    } catch {
+      // Fire-and-forget — don't surface logging errors to the user
+    }
+  }
 
   return (
     <div className="flex items-center gap-3">
@@ -22,7 +40,7 @@ export default function FeedbackBar() {
             {OPTIONS.map(({ id, label }) => (
               <button
                 key={id}
-                onClick={() => setSelected(id)}
+                onClick={() => handleSelect(id)}
                 className="
                   px-3 py-1 rounded-full text-xs border transition-all
                   bg-white text-gray-500 border-gray-200

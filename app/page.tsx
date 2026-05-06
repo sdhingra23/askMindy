@@ -131,7 +131,7 @@ export default function Page() {
             {!isLoading && answer && (
               <>
                 <SourceCitations citations={citations} />
-                <FeedbackBar />
+                <FeedbackBar question={question} answer={answer} />
               </>
             )}
           </div>
