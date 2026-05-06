@@ -11,21 +11,28 @@ const NOTION_HEADERS = (apiKey: string) => ({
   'Notion-Version': '2022-06-28',
 })
 
-// Recursively extracts plain text from a list of Notion blocks (max 2 levels deep)
+// Extracts plain text from Notion blocks, handling all common block types
 async function fetchBlockText(
   blockId: string,
   apiKey: string,
   depth = 0,
 ): Promise<string> {
-  if (depth > 1) return ''
+  if (depth > 2) return ''
 
-  const res = await fetch(`https://api.notion.com/v1/blocks/${blockId}/children?page_size=20`, {
-    headers: NOTION_HEADERS(apiKey),
-  })
-  if (!res.ok) return ''
+  const res = await fetch(
+    `https://api.notion.com/v1/blocks/${blockId}/children?page_size=50`,
+    { headers: NOTION_HEADERS(apiKey) },
+  )
+
+  if (!res.ok) {
+    console.error(`[notion] blocks fetch failed for ${blockId}: ${res.status}`)
+    return ''
+  }
 
   const data = await res.json()
   const blocks: Record<string, unknown>[] = data.results ?? []
+
+  console.log(`[notion] block ${blockId} depth=${depth} — ${blocks.length} blocks, types: ${blocks.map((b) => b.type).join(', ')}`)
 
   const parts: string[] = []
 
@@ -33,23 +40,44 @@ async function fetchBlockText(
     const type = block.type as string | undefined
     if (!type) continue
 
-    // Most content block types store rich_text under their type key
     const typeData = block[type] as Record<string, unknown> | undefined
-    const richText = typeData?.rich_text as Array<Record<string, unknown>> | undefined
 
-    if (richText) {
+    // child_page blocks reference a subpage — capture its title as text
+    if (type === 'child_page') {
+      const pageTitle = typeData?.title as string | undefined
+      if (pageTitle) parts.push(pageTitle)
+      continue
+    }
+
+    // table rows store content in cells arrays, not rich_text
+    if (type === 'table_row') {
+      const cells = typeData?.cells as Array<Array<Record<string, unknown>>> | undefined
+      if (cells) {
+        const row = cells
+          .map((cell) => cell.map((t) => t.plain_text?.toString() ?? '').join(''))
+          .join(' | ')
+        if (row.trim()) parts.push(row)
+      }
+      continue
+    }
+
+    // All other standard content blocks use rich_text
+    const richText = typeData?.rich_text as Array<Record<string, unknown>> | undefined
+    if (richText?.length) {
       const line = richText.map((t) => t.plain_text?.toString() ?? '').join('')
       if (line.trim()) parts.push(line)
     }
 
-    // Recurse into child blocks (e.g. toggle, column, bulleted list)
-    if (block.has_children) {
+    // Recurse into children (toggles, columns, synced blocks, etc.)
+    if (block.has_children && depth < 2) {
       const child = await fetchBlockText(block.id as string, apiKey, depth + 1)
       if (child) parts.push(child)
     }
   }
 
-  return parts.join(' ').slice(0, 800) // cap per-page excerpt at 800 chars
+  const text = parts.join(' ').slice(0, 1500)
+  console.log(`[notion] block ${blockId} excerpt (${text.length} chars): ${text.slice(0, 100)}`)
+  return text
 }
 
 function extractTitle(page: Record<string, unknown>): string {
@@ -96,7 +124,8 @@ export async function searchNotion(
     .filter((item: Record<string, unknown>) => item.object === 'page')
     .slice(0, 5)
 
-  // Fetch block content for each page in parallel
+  console.log(`[notion] search "${query}" → ${pages.length} pages`)
+
   const results: NotionResult[] = await Promise.all(
     pages.map(async (page) => {
       const title = extractTitle(page)
@@ -105,8 +134,12 @@ export async function searchNotion(
         (page.url as string | undefined) ??
         `https://notion.so/${(page.id as string).replace(/-/g, '')}`
 
-      const excerpt = await fetchBlockText(page.id as string, apiKey).catch(() => title)
+      const excerpt = await fetchBlockText(page.id as string, apiKey).catch((err) => {
+        console.error(`[notion] fetchBlockText failed for "${title}":`, err)
+        return ''
+      })
 
+      console.log(`[notion] page "${title}" excerpt length: ${excerpt.length}`)
       return { title, excerpt: excerpt || title, lastEdited, url }
     }),
   )
