@@ -75,7 +75,7 @@ async function fetchBlockText(
     }
   }
 
-  const text = parts.join(' ').slice(0, 1500)
+  const text = parts.join(' ').slice(0, 3000)
   console.log(`[notion] block ${blockId} excerpt (${text.length} chars): ${text.slice(0, 100)}`)
   return text
 }

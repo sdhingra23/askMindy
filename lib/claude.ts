@@ -29,6 +29,7 @@ function buildContext(sourceResults: SourceResult[]): {
         parts.push(`Title: ${r.title}`)
         parts.push(`Last edited: ${r.lastEdited}`)
         parts.push(`URL: ${r.url}`)
+        parts.push(`Content: ${r.excerpt}`)
         parts.push('---')
       }
     } else if (sr.source === 'slack') {
