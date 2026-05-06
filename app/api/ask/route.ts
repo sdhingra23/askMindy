@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { searchNotion } from '@/lib/sources/notion'
 import { searchSlack } from '@/lib/sources/slack'
 import { searchZoomChat } from '@/lib/sources/zoom'
+import { searchZendesk } from '@/lib/sources/zendesk'
 import { streamClaudeAnswer, type SourceResult } from '@/lib/claude'
 
 export const runtime = 'nodejs'
@@ -34,7 +35,6 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        // Fan out to all active sources in parallel
         const jobs: Promise<SourceResult>[] = []
 
         if (sources.includes('notion')) {
@@ -61,6 +61,14 @@ export async function POST(req: NextRequest) {
             }),
           )
         }
+        if (sources.includes('zendesk')) {
+          jobs.push(
+            searchZendesk(question).catch((err) => {
+              console.error('[zendesk] search failed:', err)
+              return { source: 'zendesk' as const, results: [] }
+            }),
+          )
+        }
 
         if (jobs.length === 0) {
           send('error', { message: 'No sources selected' })
@@ -68,18 +76,18 @@ export async function POST(req: NextRequest) {
           return
         }
 
-        send('status', { message: 'Searching Notion, Slack, Zoom...' })
+        const activeLabels = sources
+          .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+          .join(', ')
+        send('status', { message: `Searching ${activeLabels}...` })
 
         const sourceResults = await Promise.all(jobs)
         const hasResults = sourceResults.some((r) => r.results.length > 0)
 
-        if (!hasResults) {
-          send('status', { message: 'No results found — asking Claude anyway...' })
-        } else {
-          send('status', { message: 'Synthesising answer...' })
-        }
+        send('status', {
+          message: hasResults ? 'Synthesising answer...' : 'No results found — asking Claude anyway...',
+        })
 
-        // Stream Claude's response, intercepting SOURCES_JSON before it reaches the client
         let fullText = ''
         let textSentLength = 0
         let sourcesStarted = false
@@ -92,11 +100,9 @@ export async function POST(req: NextRequest) {
           const sourcesIdx = fullText.indexOf('SOURCES_JSON:')
 
           if (sourcesIdx === -1) {
-            // Haven't hit SOURCES_JSON yet — send everything new
             send('chunk', { text: fullText.slice(textSentLength) })
             textSentLength = fullText.length
           } else {
-            // SOURCES_JSON just appeared — flush remaining answer text before it
             sourcesStarted = true
             const tail = fullText.slice(textSentLength, sourcesIdx).trimEnd()
             if (tail) send('chunk', { text: tail })
@@ -104,7 +110,6 @@ export async function POST(req: NextRequest) {
           }
         })
 
-        // Parse and forward the sources block
         const match = fullText.match(/SOURCES_JSON:(\[[\s\S]*?\])/)
         if (match) {
           try {
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest) {
         send('done', {})
       } catch (err) {
         console.error('[api/ask] unhandled error:', err)
-        send('error', { message: "Something went wrong — please try again" })
+        send('error', { message: 'Something went wrong — please try again' })
       } finally {
         controller.close()
       }

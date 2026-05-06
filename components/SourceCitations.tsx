@@ -1,13 +1,16 @@
 'use client'
 
 export interface Citation {
-  source: 'notion' | 'slack' | 'zoom'
+  source: 'notion' | 'slack' | 'zoom' | 'zendesk'
   title: string
   url: string
   age: string
 }
 
-const STYLES: Record<Citation['source'], { label: string; bg: string; border: string; text: string; dot: string }> = {
+const STYLES: Record<
+  Citation['source'],
+  { label: string; bg: string; border: string; text: string; dot: string }
+> = {
   notion: {
     label: 'Notion',
     bg: 'bg-green-50',
@@ -28,6 +31,13 @@ const STYLES: Record<Citation['source'], { label: string; bg: string; border: st
     border: 'border-blue-200',
     text: 'text-blue-700',
     dot: 'bg-blue-500',
+  },
+  zendesk: {
+    label: 'Zendesk',
+    bg: 'bg-teal-50',
+    border: 'border-teal-200',
+    text: 'text-teal-700',
+    dot: 'bg-teal-500',
   },
 }
 

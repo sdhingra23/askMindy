@@ -9,7 +9,7 @@ import FeedbackBar from '@/components/FeedbackBar'
 import TeamHistory from '@/components/TeamHistory'
 
 export default function Page() {
-  const [activeSources, setActiveSources] = useState<string[]>(['notion', 'slack', 'zoom'])
+  const [activeSources, setActiveSources] = useState<string[]>(['notion', 'slack', 'zoom', 'zendesk'])
   const [question, setQuestion] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState('')

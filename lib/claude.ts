@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { NotionResult } from './sources/notion'
 import type { SlackResult } from './sources/slack'
 import type { ZoomChatResult } from './sources/zoom'
+import type { ZendeskResult } from './sources/zendesk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -9,6 +10,7 @@ export type SourceResult =
   | { source: 'notion'; results: NotionResult[] }
   | { source: 'slack'; results: SlackResult[] }
   | { source: 'zoom'; results: ZoomChatResult[] }
+  | { source: 'zendesk'; results: ZendeskResult[] }
 
 function buildContext(sourceResults: SourceResult[]): {
   context: string
@@ -49,6 +51,14 @@ function buildContext(sourceResults: SourceResult[]): {
         parts.push(`Timestamp: ${r.timestamp}`)
         parts.push('---')
       }
+    } else if (sr.source === 'zendesk') {
+      for (const r of sr.results) {
+        parts.push(`Title: ${r.title}`)
+        parts.push(`URL: ${r.url}`)
+        parts.push(`Last updated: ${r.updatedAt}`)
+        parts.push(`Content: ${r.excerpt}`)
+        parts.push('---')
+      }
     }
   }
 
@@ -68,14 +78,14 @@ export async function streamClaudeAnswer(
   const systemPrompt = `You are askMindy, the internal knowledge base assistant for HigherMe, a team \
 within Netchex. You help HigherMe team members find answers from internal documentation.
 
-You have been given relevant excerpts retrieved from: ${sourcesLabel}
+You have been given relevant content retrieved from: ${sourcesLabel}
 
 Rules:
 - Answer in 3-5 clear, actionable sentences.
 - Only use information present in the provided context.
 - If the context does not contain a clear answer, say so explicitly and flag it as a knowledge gap.
 - After your answer, on a new line output exactly:
-  SOURCES_JSON:[{"source":"notion|slack|zoom","title":"...","url":"...","age":"..."}]
+  SOURCES_JSON:[{"source":"notion|slack|zoom|zendesk","title":"...","url":"...","age":"..."}]
 - Include 2-3 sources maximum. Output nothing after the JSON.`
 
   const userContent = context
