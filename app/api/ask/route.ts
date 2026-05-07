@@ -84,9 +84,12 @@ export async function POST(req: NextRequest) {
             : []),
         ])
 
-        // Priority DB wins if it has results — fall back to all others if not
+        // Priority DB results go first so Claude weighs them highest,
+        // but all other sources are always included too
         const sourceResults: SourceResult[] =
-          priorityResult.results.length > 0 ? [priorityResult] : otherResults
+          priorityResult.results.length > 0
+            ? [priorityResult, ...otherResults]
+            : otherResults
 
         const hasResults = sourceResults.some((r) => r.results.length > 0)
 
