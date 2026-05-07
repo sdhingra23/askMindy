@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   if (dbId && apiKey) {
     try {
-      await fetch('https://api.notion.com/v1/pages', {
+      const res = await fetch('https://api.notion.com/v1/pages', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
           },
         }),
       })
+      if (!res.ok) {
+        const body = await res.text()
+        console.error(`[feedback] notion error ${res.status}:`, body)
+      }
     } catch (err) {
       console.error('[feedback] notion write failed:', err)
     }
