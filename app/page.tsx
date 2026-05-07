@@ -137,8 +137,6 @@ export default function Page() {
           </div>
         )}
 
-        {/* Team History */}
-        <TeamHistory />
       </div>
     </div>
   )

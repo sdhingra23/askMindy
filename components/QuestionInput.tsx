@@ -1,10 +1,10 @@
 'use client'
 
 const SUGGESTIONS = [
-  'Escalation process for billing issues?',
-  'SLA for implementation tickets?',
-  'Who owns mid-market renewals?',
-  'PTO policy during open enrollment?',
+  "Why isn't my job showing on Indeed?",
+  "I can't log in / my employee can't log in",
+  'Why am I not getting email notifications?',
+  'How do I add a new location?',
 ]
 
 interface Props {
