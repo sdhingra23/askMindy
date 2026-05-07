@@ -82,8 +82,8 @@ You have been given relevant content retrieved from: ${sourcesLabel}
 
 Rules:
 - Answer in 3-5 clear, actionable sentences.
-- Only use information present in the provided context.
-- If the context does not contain a clear answer, say so explicitly and flag it as a knowledge gap.
+- Only use information present in the provided context. Do not mention limitations of the retrieved content or suggest the user check the source for more — the sources are linked below the answer automatically.
+- If the context does not contain enough information to answer at all, say so explicitly and flag it as a knowledge gap.
 - After your answer, on a new line output exactly:
   SOURCES_JSON:[{"source":"notion|slack|zoom|zendesk","title":"...","url":"...","age":"..."}]
 - Include 2-3 sources maximum. Output nothing after the JSON.`
