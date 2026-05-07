@@ -45,13 +45,27 @@ interface Props {
   citations: Citation[]
 }
 
+function ConfidenceBadge({ count }: { count: number }) {
+  if (count === 0) return null
+  const level = count >= 3 ? 'High' : 'Medium'
+  const styles = count >= 3
+    ? 'bg-green-50 border-green-200 text-green-700'
+    : 'bg-amber-50 border-amber-200 text-amber-700'
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-medium ${styles}`}>
+      {level} confidence
+    </span>
+  )
+}
+
 export default function SourceCitations({ citations }: Props) {
   const isKnowledgeGap = citations.length < 2
 
   return (
     <div className="space-y-2">
       {citations.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ConfidenceBadge count={citations.length} />
           {citations.map((c, i) => {
             const s = STYLES[c.source]
             return (

@@ -1,5 +1,8 @@
 'use client'
 
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
 interface Props {
   answer: string
   isLoading: boolean
@@ -19,8 +22,24 @@ export default function AnswerCard({ answer, isLoading, status }: Props) {
       )}
 
       {answer && (
-        <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
-          {answer.trim()}
+        <div className="text-gray-800 text-sm leading-relaxed prose prose-sm max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
+              li: ({ children }) => <li className="text-gray-700">{children}</li>,
+              h1: ({ children }) => <h1 className="text-base font-semibold text-gray-900 mb-2">{children}</h1>,
+              h2: ({ children }) => <h2 className="text-sm font-semibold text-gray-900 mb-2">{children}</h2>,
+              h3: ({ children }) => <h3 className="text-sm font-semibold text-gray-900 mb-1">{children}</h3>,
+              code: ({ children }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+              blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-200 pl-3 text-gray-500 italic">{children}</blockquote>,
+            }}
+          >
+            {answer.trim()}
+          </ReactMarkdown>
           {isLoading && (
             <span className="inline-block ml-0.5 w-0.5 h-4 bg-gray-400 animate-pulse align-text-bottom" />
           )}
