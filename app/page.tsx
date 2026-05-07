@@ -6,7 +6,7 @@ import QuestionInput from '@/components/QuestionInput'
 import AnswerCard from '@/components/AnswerCard'
 import SourceCitations, { type Citation } from '@/components/SourceCitations'
 import FeedbackBar from '@/components/FeedbackBar'
-import TeamHistory from '@/components/TeamHistory'
+import TeamHistory, { saveToHistory } from '@/components/TeamHistory'
 
 export default function Page() {
   const [activeSources, setActiveSources] = useState<string[]>(['notion', 'slack', 'zoom', 'zendesk'])
@@ -16,6 +16,7 @@ export default function Page() {
   const [answer, setAnswer] = useState('')
   const [citations, setCitations] = useState<Citation[]>([])
   const [hasAsked, setHasAsked] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
 
   const handleAsk = useCallback(
     async (q: string) => {
@@ -43,6 +44,8 @@ export default function Page() {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
+        let currentAnswer = ''
+        let currentCitations: Citation[] = []
 
         while (true) {
           const { done, value } = await reader.read()
@@ -72,10 +75,14 @@ export default function Page() {
                 setStatus(payload.message)
               } else if (eventType === 'chunk') {
                 setStatus('')
+                currentAnswer += payload.text
                 setAnswer((prev) => prev + payload.text)
               } else if (eventType === 'sources') {
+                currentCitations = payload
                 setCitations(payload)
               } else if (eventType === 'done') {
+                saveToHistory(q, currentAnswer, currentCitations)
+                setHistoryKey((k) => k + 1)
                 setIsLoading(false)
               } else if (eventType === 'error') {
                 setAnswer(payload.message ?? "Something went wrong — please try again")
@@ -136,6 +143,8 @@ export default function Page() {
             )}
           </div>
         )}
+
+        <TeamHistory key={historyKey} onReask={(q) => { setQuestion(q); handleAsk(q) }} />
 
       </div>
     </div>
