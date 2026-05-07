@@ -53,10 +53,10 @@ function timeAgo(iso: string): string {
 }
 
 interface Props {
-  onReask: (question: string) => void
+  onSelect: (item: HistoryItem) => void
 }
 
-export default function TeamHistory({ onReask }: Props) {
+export default function TeamHistory({ onSelect }: Props) {
   const [history, setHistory] = useState<HistoryItem[]>([])
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function TeamHistory({ onReask }: Props) {
         {history.map((item) => (
           <li key={item.id}>
             <button
-              onClick={() => onReask(item.question)}
+              onClick={() => onSelect(item)}
               className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-100 bg-white hover:border-[#534AB7]/30 hover:bg-[#534AB7]/5 transition-all group"
             >
               <div className="flex items-start justify-between gap-3">

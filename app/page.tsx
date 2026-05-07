@@ -133,7 +133,7 @@ export default function Page() {
         {/* Answer + Citations + Feedback */}
         {showAnswerArea && (
           <div className="mt-6 space-y-3">
-            <AnswerCard answer={answer} isLoading={isLoading} status={status} />
+            <AnswerCard answer={answer} isLoading={isLoading} status={status} citationCount={citations.length} />
 
             {!isLoading && answer && (
               <>
@@ -144,7 +144,12 @@ export default function Page() {
           </div>
         )}
 
-        <TeamHistory key={historyKey} onReask={(q) => { setQuestion(q); handleAsk(q) }} />
+        <TeamHistory key={historyKey} onSelect={(item) => {
+          setQuestion(item.question)
+          setAnswer(item.answer)
+          setCitations(item.citations)
+          setHasAsked(true)
+        }} />
 
       </div>
     </div>
