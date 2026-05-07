@@ -50,11 +50,14 @@ export async function POST(req: NextRequest) {
         const searchQuery = await extractSearchQuery(question).catch(() => question)
 
         // Run priority DB and all other sources in parallel
+        // Priority DB only runs if Notion is an active source
         const [priorityResult, ...otherResults] = await Promise.all([
-          searchNotionPriorityDB(searchQuery).catch((err) => {
-            console.error('[notion-priority] search failed:', err)
-            return { source: 'notion' as const, results: [] }
-          }),
+          sources.includes('notion')
+            ? searchNotionPriorityDB(searchQuery).catch((err) => {
+                console.error('[notion-priority] search failed:', err)
+                return { source: 'notion' as const, results: [] }
+              })
+            : Promise.resolve({ source: 'notion' as const, results: [] }),
           ...(sources.includes('notion')
             ? [searchNotion(searchQuery).catch((err) => {
                 console.error('[notion] search failed:', err)
