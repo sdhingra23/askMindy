@@ -95,7 +95,7 @@ Rules:
     : `Question: ${question}\n\nNote: No results were retrieved from the knowledge base.`
 
   const stream = anthropic.messages.stream({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5',
     max_tokens: 1024,
     system: systemPrompt,
     messages: [{ role: 'user', content: userContent }],
