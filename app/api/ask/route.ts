@@ -6,6 +6,7 @@ import { searchZendesk } from '@/lib/sources/zendesk'
 import { searchNotionPriorityDB } from '@/lib/sources/notionPriorityDB'
 import { streamClaudeAnswer, type SourceResult } from '@/lib/claude'
 import { extractSearchQuery } from '@/lib/extractQuery'
+import { logToNotionFeedbackDB } from '@/lib/notionLog'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,11 @@ export async function POST(req: NextRequest) {
   if (sources.length === 0) {
     return new Response('No sources selected', { status: 400 })
   }
+
+  const user =
+    req.headers.get('x-vercel-user-email') ??
+    req.headers.get('x-vercel-user-name') ??
+    'unknown'
 
   const encoder = new TextEncoder()
 
@@ -128,6 +134,9 @@ export async function POST(req: NextRequest) {
             // Malformed JSON from model — skip
           }
         }
+
+        const cleanAnswer = (match ? fullText.slice(0, match.index) : fullText).trim()
+        await logToNotionFeedbackDB({ user, question, answer: cleanAnswer })
 
         send('done', {})
       } catch (err) {
