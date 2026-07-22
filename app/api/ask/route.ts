@@ -104,39 +104,20 @@ export async function POST(req: NextRequest) {
         })
 
         let fullText = ''
-        let textSentLength = 0
-        let sourcesStarted = false
 
-        await streamClaudeAnswer(question, sourceResults, (chunk: string) => {
-          fullText += chunk
-
-          if (sourcesStarted) return
-
-          const sourcesIdx = fullText.indexOf('SOURCES_JSON:')
-
-          if (sourcesIdx === -1) {
-            send('chunk', { text: fullText.slice(textSentLength) })
-            textSentLength = fullText.length
-          } else {
-            sourcesStarted = true
-            const tail = fullText.slice(textSentLength, sourcesIdx).trimEnd()
-            if (tail) send('chunk', { text: tail })
-            textSentLength = sourcesIdx
-          }
-        })
-
-        const match = fullText.match(/SOURCES_JSON:(\[[\s\S]*?\])/)
-        if (match) {
-          try {
-            const citations = JSON.parse(match[1])
+        await streamClaudeAnswer(
+          question,
+          sourceResults,
+          (chunk: string) => {
+            fullText += chunk
+            send('chunk', { text: chunk })
+          },
+          (citations: unknown) => {
             send('sources', citations)
-          } catch {
-            // Malformed JSON from model — skip
-          }
-        }
+          },
+        )
 
-        const cleanAnswer = (match ? fullText.slice(0, match.index) : fullText).trim()
-        await logToNotionFeedbackDB({ user, question, answer: cleanAnswer })
+        await logToNotionFeedbackDB({ user, question, answer: fullText.trim() })
 
         send('done', {})
       } catch (err) {

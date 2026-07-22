@@ -133,7 +133,7 @@ export default function Page() {
         {/* Answer + Citations + Feedback */}
         {showAnswerArea && (
           <div className="mt-6 space-y-3">
-            <AnswerCard answer={answer} isLoading={isLoading} status={status} citationCount={citations.length} />
+            <AnswerCard answer={answer} isLoading={isLoading} status={status} />
 
             {!isLoading && answer && (
               <>

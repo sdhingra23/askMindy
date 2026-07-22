@@ -7,23 +7,9 @@ interface Props {
   answer: string
   isLoading: boolean
   status: string
-  citationCount?: number
 }
 
-function ConfidenceBadge({ count }: { count: number }) {
-  if (count === 0) return null
-  const level = count >= 3 ? 'High' : 'Medium'
-  const styles = count >= 3
-    ? 'bg-green-50 border-green-200 text-green-700'
-    : 'bg-amber-50 border-amber-200 text-amber-700'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-medium ${styles}`}>
-      {level} confidence
-    </span>
-  )
-}
-
-export default function AnswerCard({ answer, isLoading, status, citationCount }: Props) {
+export default function AnswerCard({ answer, isLoading, status }: Props) {
   const showSpinner = isLoading && !answer
 
   return (
@@ -37,11 +23,6 @@ export default function AnswerCard({ answer, isLoading, status, citationCount }:
 
       {answer && (
         <>
-        {citationCount !== undefined && citationCount > 0 && (
-          <div className="flex justify-end mb-2">
-            <ConfidenceBadge count={citationCount} />
-          </div>
-        )}
         <div className="text-gray-800 text-sm leading-relaxed prose prose-sm max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

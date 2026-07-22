@@ -68,10 +68,35 @@ function buildContext(sourceResults: SourceResult[]): {
   }
 }
 
+const CITE_SOURCES_TOOL: Anthropic.Tool = {
+  name: 'cite_sources',
+  description: 'Report the 2-3 most relevant sources used to answer the question.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      citations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', enum: ['notion', 'slack', 'zoom', 'zendesk'] },
+            title: { type: 'string' },
+            url: { type: 'string' },
+            age: { type: 'string' },
+          },
+          required: ['source', 'title', 'url', 'age'],
+        },
+      },
+    },
+    required: ['citations'],
+  },
+}
+
 export async function streamClaudeAnswer(
   question: string,
   sourceResults: SourceResult[],
   onChunk: (text: string) => void,
+  onSources?: (citations: unknown) => void,
 ): Promise<void> {
   const { context, sourcesLabel } = buildContext(sourceResults)
 
@@ -84,9 +109,7 @@ Rules:
 - Answer in 3-5 clear, actionable sentences.
 - Only use information present in the provided context. Do not mention limitations of the retrieved content or suggest the user check the source for more — the sources are linked below the answer automatically.
 - If the context does not contain enough information to answer at all, say so explicitly and flag it as a knowledge gap.
-- After your answer, on a new line output exactly:
-  SOURCES_JSON:[{"source":"notion|slack|zoom|zendesk","title":"...","url":"...","age":"..."}]
-- Include 2-3 sources maximum. Output nothing after the JSON.`
+- After writing your answer, call the cite_sources tool exactly once with the 2-3 most relevant sources.`
 
   console.log(`[claude] context sent (${context.length} chars):\n${context}`)
 
@@ -95,18 +118,33 @@ Rules:
     : `Question: ${question}\n\nNote: No results were retrieved from the knowledge base.`
 
   const stream = anthropic.messages.stream({
-    model: 'claude-haiku-4-5',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     system: systemPrompt,
+    tools: [CITE_SOURCES_TOOL],
     messages: [{ role: 'user', content: userContent }],
   })
 
+  let toolJson = ''
+  let inToolBlock = false
+
   for await (const event of stream) {
-    if (
-      event.type === 'content_block_delta' &&
-      event.delta.type === 'text_delta'
-    ) {
-      onChunk(event.delta.text)
+    if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
+      inToolBlock = true
+    } else if (event.type === 'content_block_delta') {
+      if (event.delta.type === 'text_delta') {
+        onChunk(event.delta.text)
+      } else if (event.delta.type === 'input_json_delta') {
+        toolJson += event.delta.partial_json
+      }
+    } else if (event.type === 'content_block_stop' && inToolBlock) {
+      inToolBlock = false
+      try {
+        const parsed = JSON.parse(toolJson)
+        onSources?.(parsed.citations ?? [])
+      } catch (err) {
+        console.error('[claude] failed to parse cite_sources tool input:', err, toolJson)
+      }
     }
   }
 }
