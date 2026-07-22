@@ -120,8 +120,16 @@ export async function searchNotion(
   }
 
   const data = await response.json()
+  const feedbackDbId = process.env.NOTION_FEEDBACK_DB_ID?.replace(/-/g, '')
+
   const pages: Record<string, unknown>[] = (data.results ?? [])
     .filter((item: Record<string, unknown>) => item.object === 'page')
+    .filter((page: Record<string, unknown>) => {
+      if (!feedbackDbId) return true
+      const parent = page.parent as Record<string, unknown> | undefined
+      const parentDbId = (parent?.database_id as string | undefined)?.replace(/-/g, '') ?? ''
+      return parentDbId !== feedbackDbId
+    })
     .slice(0, 5)
 
   console.log(`[notion] search "${query}" → ${pages.length} pages`)
